@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/muhammeddemirciofficial/urlix/internal/service"
@@ -19,12 +20,15 @@ func NewPostgresURLRepository(db *sql.DB) *PostgresURLRepository {
 	}
 }
 
-func (r *PostgresURLRepository) Save(code string, url string) error {
+func (r *PostgresURLRepository) Save(code string, url string, expiresAt *time.Time) error {
 	_, err := r.db.ExecContext(
 		context.Background(),
-		`INSERT INTO urls (code, url)
-		VALUES ($1, $2)`,
-		code, url)
+		`INSERT INTO urls (code, url, expires_at)
+		 VALUES ($1, $2, $3)`,
+		code,
+		url,
+		expiresAt,
+	)
 
 	if err == nil {
 		return nil
@@ -38,20 +42,26 @@ func (r *PostgresURLRepository) Save(code string, url string) error {
 	return err
 }
 
-func (r *PostgresURLRepository) Get(code string) (string, error) {
-	var url string
+func (r *PostgresURLRepository) Get(code string) (service.URL, error) {
+	var result service.URL
 
 	err := r.db.QueryRowContext(
 		context.Background(),
-		`SELECT url FROM urls WHERE code = $1`,
+		`SELECT code, url, expires_at
+		 FROM urls
+		 WHERE code = $1`,
 		code,
-	).Scan(&url)
+	).Scan(
+		&result.Code,
+		&result.URL,
+		&result.ExpiresAt,
+	)
 
 	if err != nil {
-		return "", err
+		return service.URL{}, err
 	}
 
-	return url, nil
+	return result, nil
 }
 
 func (r *PostgresURLRepository) IncrementClickCount(code string) error {

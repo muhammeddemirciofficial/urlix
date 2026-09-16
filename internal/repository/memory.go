@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"sync"
+	"time"
 
 	"github.com/muhammeddemirciofficial/urlix/internal/service"
 )
@@ -18,7 +19,7 @@ func NewMemoryURLRepository() *MemoryURLRepository {
 	}
 }
 
-func (s *MemoryURLRepository) Save(code, url string) error {
+func (s *MemoryURLRepository) Save(code, url string, expiresAt *time.Time) error {
 	if _, exists := s.urls[code]; exists {
 		return service.ErrDuplicateCode
 	}
@@ -31,17 +32,17 @@ func (s *MemoryURLRepository) Save(code, url string) error {
 	return nil
 }
 
-func (s *MemoryURLRepository) Get(code string) (string, error) {
+func (s *MemoryURLRepository) Get(code string) (service.URL, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	url, ok := s.urls[code]
 
 	if !ok {
-		return "", sql.ErrNoRows
+		return service.URL{}, sql.ErrNoRows
 	}
 
-	return url, nil
+	return service.URL{URL: url}, nil
 }
 
 func (s *MemoryURLRepository) IncrementClickCount(code string) error {
@@ -50,14 +51,14 @@ func (s *MemoryURLRepository) IncrementClickCount(code string) error {
 }
 
 func (r *MemoryURLRepository) GetStats(code string) (service.URLStats, error) {
-	url, err := r.Get(code)
+	result, err := r.Get(code)
 	if err != nil {
 		return service.URLStats{}, err
 	}
 
 	return service.URLStats{
 		Code:       code,
-		URL:        url,
+		URL:        result.URL,
 		ClickCount: 0,
 	}, nil
 }

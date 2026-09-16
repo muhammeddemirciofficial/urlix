@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"testing"
+	"time"
 )
 
 type mockURLRepository struct {
@@ -10,20 +11,19 @@ type mockURLRepository struct {
 	saveErrors []error
 }
 
-func (m *mockURLRepository) Save(code string, url string) error {
+func (m *mockURLRepository) Save(code string, url string, expiresAt *time.Time) error {
 	m.saveCalls++
 
 	if len(m.saveErrors) == 0 {
 		return nil
 	}
-
 	err := m.saveErrors[0]
 	m.saveErrors = m.saveErrors[1:]
 	return err
 }
 
-func (m *mockURLRepository) Get(code string) (string, error) {
-	return "", nil
+func (m *mockURLRepository) Get(code string) (URL, error) {
+	return URL{}, nil
 }
 
 func (m *mockURLRepository) GetStats(code string) (URLStats, error) {
@@ -230,5 +230,26 @@ func TestValidateAliasRejectsReservedAliases(t *testing.T) {
 				t.Fatalf("expected ErrReservedAlias, got %v", err)
 			}
 		})
+	}
+}
+
+func TestCreateURLWithExpiration(t *testing.T) {
+	repo := &mockURLRepository{}
+
+	svc := NewURLService(repo)
+
+	expiresAt := time.Now().Add(time.Hour)
+
+	code, err := svc.CreateURLWithExpiration("https://example.com", &expiresAt)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if code == "" {
+		t.Fatal("expected code, got empty string")
+	}
+
+	if repo.saveCalls != 1 {
+		t.Fatalf("expected 1 save call, got %d", repo.saveCalls)
 	}
 }

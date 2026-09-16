@@ -6,11 +6,14 @@ import (
 	"math/big"
 	"net/url"
 	"strings"
+	"time"
 )
 
 var ErrDuplicateCode = errors.New("duplicate URL code")
 var ErrInvalidURL = errors.New("invalid URL")
 var ErrReservedAlias = errors.New("reserved alias")
+var ErrURLExpired = errors.New("URL has expired")
+var ErrInvalidExpiration = errors.New("expiration must be in the future")
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
@@ -20,9 +23,15 @@ type URLStats struct {
 	ClickCount int    `json:"click_count"`
 }
 
+type URL struct {
+	Code      string
+	URL       string
+	ExpiresAt *time.Time
+}
+
 type URLRepository interface {
-	Save(code string, url string) error
-	Get(code string) (string, error)
+	Save(code string, url string, expiresAt *time.Time) error
+	Get(code string) (URL, error)
 	GetStats(code string) (URLStats, error)
 	IncrementClickCount(code string) error
 }
@@ -38,8 +47,16 @@ func NewURLService(repository URLRepository) *URLService {
 }
 
 func (s *URLService) CreateURL(url string) (string, error) {
-	if err := ValidateURL(url); err != nil {
+	return s.CreateURLWithExpiration(url, nil)
+}
+
+func (s *URLService) CreateURLWithExpiration(rawURL string, expiresAt *time.Time) (string, error) {
+	if err := ValidateURL(rawURL); err != nil {
 		return "", ErrInvalidURL
+	}
+
+	if expiresAt != nil && !expiresAt.After(time.Now()) {
+		return "", ErrInvalidExpiration
 	}
 
 	const maxAttempts = 5
@@ -50,25 +67,32 @@ func (s *URLService) CreateURL(url string) (string, error) {
 			return "", err
 		}
 
-		err = s.repository.Save(code, url)
+		err = s.repository.Save(code, rawURL, expiresAt)
 		if err == nil {
 			return code, nil
 		}
 
-		if !errors.Is(err, ErrDuplicateCode) {
-			return "", err
+		if errors.Is(err, ErrDuplicateCode) {
+			continue
 		}
+
+		return "", err
 	}
 
 	return "", ErrDuplicateCode
 }
 
 func (s *URLService) GetURL(code string) (string, error) {
-	url, err := s.repository.Get(code)
+	result, err := s.repository.Get(code)
 	if err != nil {
 		return "", err
 	}
-	return url, nil
+
+	if result.ExpiresAt != nil && !result.ExpiresAt.After(time.Now()) {
+		return "", ErrURLExpired
+	}
+
+	return result.URL, nil
 }
 
 func (s *URLService) GetStats(code string) (URLStats, error) {
@@ -84,6 +108,10 @@ func (s *URLService) IncrementClickCount(code string) error {
 }
 
 func (s *URLService) CreateURLWithAlias(rawURL string, alias string) (string, error) {
+	return s.CreateURLWithAliasAndExpiration(rawURL, alias, nil)
+}
+
+func (s *URLService) CreateURLWithAliasAndExpiration(rawURL string, alias string, expiresAt *time.Time) (string, error) {
 	if err := ValidateURL(rawURL); err != nil {
 		return "", ErrInvalidURL
 	}
@@ -92,7 +120,11 @@ func (s *URLService) CreateURLWithAlias(rawURL string, alias string) (string, er
 		return "", err
 	}
 
-	if err := s.repository.Save(alias, rawURL); err != nil {
+	if expiresAt != nil && !expiresAt.After(time.Now()) {
+		return "", ErrInvalidExpiration
+	}
+
+	if err := s.repository.Save(alias, rawURL, expiresAt); err != nil {
 		if errors.Is(err, ErrDuplicateCode) {
 			return "", ErrDuplicateCode
 		}

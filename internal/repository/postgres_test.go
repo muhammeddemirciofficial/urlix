@@ -39,7 +39,7 @@ func TestPostgresURLRepository_SaveAndGet(t *testing.T) {
 		_, _ = db.Exec("DELETE FROM urls WHERE code = $1", code)
 	})
 
-	err = repo.Save(code, url)
+	err = repo.Save(code, url, nil)
 	if err != nil {
 		t.Fatalf("failed to save URL: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestPostgresURLRepository_SaveAndGet(t *testing.T) {
 		t.Fatalf("failed to get URL: %v", err)
 	}
 
-	if got != url {
+	if got.URL != url {
 		t.Errorf("expected URL %s, got %s", url, got)
 	}
 }
@@ -82,11 +82,11 @@ func TestPostgresURLRepository_SaveDuplicate(t *testing.T) {
 		_, _ = db.Exec("DELETE FROM urls WHERE code = $1", code)
 	})
 
-	if err := repo.Save(code, url); err != nil {
+	if err := repo.Save(code, url, nil); err != nil {
 		t.Fatalf("failed to save first URL: %v", err)
 	}
 
-	err = repo.Save(code, url)
+	err = repo.Save(code, url, nil)
 	if !errors.Is(err, service.ErrDuplicateCode) {
 		t.Fatalf("expected ErrDuplicateCode, got %v", err)
 	}

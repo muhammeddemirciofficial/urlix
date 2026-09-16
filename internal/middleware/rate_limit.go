@@ -43,7 +43,7 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 
 		if !exists || now.Sub(v.windowStart) >= rl.window {
 			rl.visitors[ip] = &visitor{
-				count:       1,
+				count:       0,
 				windowStart: now,
 			}
 

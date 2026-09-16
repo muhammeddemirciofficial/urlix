@@ -3,7 +3,9 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/muhammeddemirciofficial/urlix/internal/service"
 )
 
@@ -20,10 +22,19 @@ func NewPostgresURLRepository(db *sql.DB) *PostgresURLRepository {
 func (r *PostgresURLRepository) Save(code string, url string) error {
 	_, err := r.db.ExecContext(
 		context.Background(),
-		`INSERT INTO urls (code, url) VALUES ($1, $2)`,
-		code,
-		url,
-	)
+		`INSERT INTO urls (code, url)
+		VALUES ($1, $2)`,
+		code, url)
+
+	if err == nil {
+		return nil
+	}
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return service.ErrDuplicateCode
+	}
+
 	return err
 }
 

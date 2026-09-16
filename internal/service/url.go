@@ -2,8 +2,11 @@ package service
 
 import (
 	"crypto/rand"
+	"errors"
 	"math/big"
 )
+
+var ErrDuplicateCode = errors.New("duplicate URL code")
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
@@ -31,17 +34,25 @@ func NewURLService(repository URLRepository) *URLService {
 }
 
 func (s *URLService) CreateURL(url string) (string, error) {
-	code, err := GenerateCode(6)
-	if err != nil {
-		return "", err
+	const maxAttempts = 5
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		code, err := GenerateCode(6)
+		if err != nil {
+			return "", err
+		}
+
+		err = s.repository.Save(code, url)
+		if err == nil {
+			return code, nil
+		}
+
+		if !errors.Is(err, ErrDuplicateCode) {
+			return "", err
+		}
 	}
 
-	err = s.repository.Save(code, url)
-	if err != nil {
-		return "", err
-	}
-
-	return code, nil
+	return "", ErrDuplicateCode
 }
 
 func (s *URLService) GetURL(code string) (string, error) {

@@ -44,7 +44,12 @@ func (h *URLHandler) CreateURL(w http.ResponseWriter, r *http.Request) {
 
 	code, err := h.urlService.CreateURL(req.URL)
 	if err != nil {
-		http.Error(w, "could not generate code", http.StatusInternalServerError)
+		if errors.Is(err, service.ErrInvalidURL) {
+			http.Error(w, "invalid URL", http.StatusBadRequest)
+			return
+		}
+
+		http.Error(w, "failed to create URL", http.StatusInternalServerError)
 		return
 	}
 
@@ -54,6 +59,7 @@ func (h *URLHandler) CreateURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(response)
 }
 

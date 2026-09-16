@@ -4,9 +4,11 @@ import (
 	"crypto/rand"
 	"errors"
 	"math/big"
+	"net/url"
 )
 
 var ErrDuplicateCode = errors.New("duplicate URL code")
+var ErrInvalidURL = errors.New("invalid URL")
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
@@ -34,6 +36,10 @@ func NewURLService(repository URLRepository) *URLService {
 }
 
 func (s *URLService) CreateURL(url string) (string, error) {
+	if err := ValidateURL(url); err != nil {
+		return "", ErrInvalidURL
+	}
+
 	const maxAttempts = 5
 
 	for attempt := 0; attempt < maxAttempts; attempt++ {
@@ -87,4 +93,25 @@ func GenerateCode(length int) (string, error) {
 	}
 
 	return string(code), nil
+}
+
+func ValidateURL(rawURL string) error {
+	if rawURL == "" {
+		return errors.New("url is required")
+	}
+
+	parsed, err := url.ParseRequestURI(rawURL)
+	if err != nil {
+		return errors.New("invalid url format")
+	}
+
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return errors.New("URL must start with http or https")
+	}
+
+	if parsed.Host == "" {
+		return errors.New("url host is required")
+	}
+
+	return nil
 }

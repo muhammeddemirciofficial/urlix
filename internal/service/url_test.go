@@ -1,6 +1,9 @@
 package service
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 type mockURLRepository struct {
 	saveCalls  int
@@ -63,5 +66,63 @@ func TestCreateURLRetriesOnDuplicateCode(t *testing.T) {
 
 	if repo.saveCalls != 2 {
 		t.Fatalf("expected 2 save calls, got %d", repo.saveCalls)
+	}
+}
+
+func TestValidateURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		url     string
+		wantErr bool
+	}{
+		{
+			name:    "valid https",
+			url:     "https://example.com",
+			wantErr: false,
+		},
+		{
+			name:    "valid http",
+			url:     "http://example.com",
+			wantErr: false,
+		},
+		{
+			name:    "missing scheme",
+			url:     "example.com",
+			wantErr: true,
+		},
+		{
+			name:    "unsupported scheme",
+			url:     "ftp://example.com",
+			wantErr: true,
+		},
+		{
+			name:    "empty url",
+			url:     "",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateURL(tt.url)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ValidateURL(%q) error = %v, wantErr %v", tt.url, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestCreateURLRejectsInvalidURL(t *testing.T) {
+	repo := &mockURLRepository{}
+	svc := NewURLService(repo)
+
+	_, err := svc.CreateURL("not-a-url")
+
+	if !errors.Is(err, ErrInvalidURL) {
+		t.Fatalf("expected ErrInvalidURL, got %v", err)
+	}
+
+	if repo.saveCalls != 0 {
+		t.Fatalf("expected Save not to be called, got %d calls", repo.saveCalls)
 	}
 }

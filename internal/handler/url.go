@@ -79,10 +79,15 @@ func (h *URLHandler) CreateURL(w http.ResponseWriter, r *http.Request) {
 func (h *URLHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	code := r.PathValue("code")
 
-	url, err := h.urlService.GetURL(code)
+	result, err := h.urlService.GetURLData(code)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			http.NotFound(w, r)
+			return
+		}
+
+		if errors.Is(err, service.ErrURLExpired) {
+			http.Error(w, "URL expired", http.StatusGone)
 			return
 		}
 
@@ -95,7 +100,11 @@ func (h *URLHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, url, http.StatusFound)
+	if err := h.urlService.RecordClick(result.ID, r.UserAgent(), r.Referer()); err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
+
+	http.Redirect(w, r, result.URL, http.StatusFound)
 }
 
 func (h *URLHandler) GetStats(w http.ResponseWriter, r *http.Request) {
@@ -114,4 +123,26 @@ func (h *URLHandler) GetStats(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(stats)
+}
+
+func (h *URLHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
+	code := r.PathValue("code")
+
+	analytics, err := h.urlService.GetAnalytics(code)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.NotFound(w, r)
+			return
+		}
+
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(analytics); err != nil {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
 }

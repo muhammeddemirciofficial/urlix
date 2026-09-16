@@ -59,6 +59,12 @@ jobs:
             -d urlix \
             -f migrations/003_add_expires_at.sql
 
+          PGPASSWORD=urlix psql \
+            -h localhost \
+            -U urlix \
+            -d urlix \
+            -f migrations/004_create_url_clicks.sql
+
       - name: Run tests
         run: go test ./...
 

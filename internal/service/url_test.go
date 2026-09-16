@@ -34,6 +34,10 @@ func (m *mockURLRepository) IncrementClickCount(code string) error {
 	return nil
 }
 
+func (s *mockURLRepository) RecordClick(urlID int64, userAgent string, referer string) error {
+	return nil
+}
+
 func TestGenerateCode(t *testing.T) {
 	code, err := GenerateCode(6)
 	if err != nil {
@@ -251,5 +255,59 @@ func TestCreateURLWithExpiration(t *testing.T) {
 
 	if repo.saveCalls != 1 {
 		t.Fatalf("expected 1 save call, got %d", repo.saveCalls)
+	}
+}
+
+func (m *mockURLRepository) GetAnalytics(code string) (URLAnalytics, error) {
+	return URLAnalytics{
+		Code:       code,
+		URL:        "https://example.com",
+		ClickCount: 2,
+		Clicks: []Click{
+			{
+				ClickedAt: time.Now(),
+				UserAgent: "TestBrowser/1.0",
+				Referer:   "https://google.com",
+			},
+			{
+				ClickedAt: time.Now(),
+				UserAgent: "TestBrowser/2.0",
+				Referer:   "https://bing.com",
+			},
+		},
+	}, nil
+}
+
+func TestGetAnalytics(t *testing.T) {
+	repo := &mockURLRepository{}
+	svc := NewURLService(repo)
+
+	got, err := svc.GetAnalytics("abc123")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if got.Code != "abc123" {
+		t.Errorf("expected code abc123, got %s", got.Code)
+	}
+
+	if got.URL != "https://example.com" {
+		t.Errorf("expected URL https://example.com, got %s", got.URL)
+	}
+
+	if got.ClickCount != 2 {
+		t.Errorf("expected click count 2, got %d", got.ClickCount)
+	}
+
+	if len(got.Clicks) != 2 {
+		t.Fatalf("expected 2 clicks, got %d", len(got.Clicks))
+	}
+
+	if got.Clicks[0].UserAgent != "TestBrowser/1.0" {
+		t.Errorf("unexpected first user agent: %s", got.Clicks[0].UserAgent)
+	}
+
+	if got.Clicks[1].Referer != "https://bing.com" {
+		t.Errorf("unexpected second referer: %s", got.Clicks[1].Referer)
 	}
 }

@@ -24,9 +24,23 @@ type URLStats struct {
 }
 
 type URL struct {
+	ID        int64
 	Code      string
 	URL       string
 	ExpiresAt *time.Time
+}
+
+type Click struct {
+	ClickedAt time.Time `json:"clicked_at"`
+	UserAgent string    `json:"user_agent"`
+	Referer   string    `json:"referer"`
+}
+
+type URLAnalytics struct {
+	Code       string  `json:"code"`
+	URL        string  `json:"url"`
+	ClickCount int     `json:"click_count"`
+	Clicks     []Click `json:"clicks"`
 }
 
 type URLRepository interface {
@@ -34,6 +48,8 @@ type URLRepository interface {
 	Get(code string) (URL, error)
 	GetStats(code string) (URLStats, error)
 	IncrementClickCount(code string) error
+	RecordClick(urlID int64, userAgent string, referer string) error
+	GetAnalytics(code string) (URLAnalytics, error)
 }
 
 type URLService struct {
@@ -107,6 +123,10 @@ func (s *URLService) IncrementClickCount(code string) error {
 	return s.repository.IncrementClickCount(code)
 }
 
+func (s *URLService) RecordClick(urlID int64, userAgent string, referer string) error {
+	return s.repository.RecordClick(urlID, userAgent, referer)
+}
+
 func (s *URLService) CreateURLWithAlias(rawURL string, alias string) (string, error) {
 	return s.CreateURLWithAliasAndExpiration(rawURL, alias, nil)
 }
@@ -133,6 +153,23 @@ func (s *URLService) CreateURLWithAliasAndExpiration(rawURL string, alias string
 	}
 
 	return alias, nil
+}
+
+func (s *URLService) GetURLData(code string) (URL, error) {
+	result, err := s.repository.Get(code)
+	if err != nil {
+		return URL{}, err
+	}
+
+	if result.ExpiresAt != nil && !result.ExpiresAt.After(time.Now()) {
+		return URL{}, ErrURLExpired
+	}
+
+	return result, nil
+}
+
+func (s *URLService) GetAnalytics(code string) (URLAnalytics, error) {
+	return s.repository.GetAnalytics(code)
 }
 
 func GenerateCode(length int) (string, error) {

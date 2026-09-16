@@ -40,6 +40,7 @@ func main() {
 	http.Handle("POST /api/urls", rateLimiter.Middleware(http.HandlerFunc(urlHandler.CreateURL)))
 	http.HandleFunc("GET /r/{code}", urlHandler.Redirect)
 	http.HandleFunc("GET /api/urls/{code}", urlHandler.GetStats)
+	http.HandleFunc("GET /api/urls/{code}/analytics", urlHandler.GetAnalytics)
 
 	fmt.Println("URLIX is running on http://localhost:8080")
 

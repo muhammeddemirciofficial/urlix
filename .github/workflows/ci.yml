@@ -53,6 +53,12 @@ jobs:
             -d urlix \
             -f migrations/002_add_click_count.sql
 
+          PGPASSWORD=urlix psql \
+            -h localhost \
+            -U urlix \
+            -d urlix \
+            -f migrations/003_add_expires_at.sql
+
       - name: Run tests
         run: go test ./...
 

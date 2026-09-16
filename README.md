@@ -171,7 +171,7 @@ Check statistics:
     - pgx
     - Docker
     - database/sql
-    - Go net/http
+    - Go standard library (net/http)
 
 ## Roadmap
 

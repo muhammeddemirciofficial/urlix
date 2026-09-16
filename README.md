@@ -3,20 +3,20 @@ A lightweight URL shortener built with GO and PostgreSQL.
 
 urlix provides a simple REST API for creating short URLs, redirecting users, and tracking click counts.
 
-Features
+## Features
 
-    * Create short URLs
-    * Random 6-character short codes
-    * PostgreSQL persistence
-    * In-memory repository for testing
-    * Click tracking
-    * URL statistics endpoint
-    * Input validation
-    * Dockerized PostgreSQL
-    * Unit tests
-    * Clean separation between HTTP, service and repository layers
+    - Create short URLs
+    - Random 6-character short codes
+    - PostgreSQL persistence
+    - In-memory repository for testing
+    - Click tracking
+    - URL statistics endpoint
+    - Input validation
+    - Dockerized PostgreSQL
+    - Unit tests
+    - Clean separation between HTTP, service and repository layers
 
-Architecture
+## Architecture
 
                     ┌──────────────┐
                     │    Client    │
@@ -122,10 +122,10 @@ Project Structure
     ├── go.sum
     └── README.md
 
-Requirements
-    * GO 1.27+
-    * Docker
-    * Docker Compose
+## Requirements
+    - GO 1.27+
+    - Docker
+    - Docker Compose
 
 Run Locally
 
@@ -165,28 +165,29 @@ Check statistics:
 
     curl http://localhost:8080/api/urls/{code}
 
-Tech Stack
-    * Go
-    * PostgreSQL
-    * pgx
-    * Docker
-    * database/sql
-    * Go net/http
+## Tech Stack
+    - Go
+    - PostgreSQL
+    - pgx
+    - Docker
+    - database/sql
+    - Go net/http
 
-Roadmap
-    * Url creation
-    * Url redirection
-    * PostgreSQL persistence
-    * Click tracking
-    * URL statistics
-    * In-memory repository
-    * Unit tests
-    * Integration tests
-    * Github Actions CI
-    * Rate limiting
-    * URL expiration
-    * Custom aliases
-    * API documentation
+## Roadmap
+
+- [x] URL creation
+- [x] URL redirection
+- [x] PostgreSQL persistence
+- [x] Click tracking
+- [x] URL statistics
+- [x] In-memory repository
+- [x] Unit tests
+- [ ] Integration tests
+- [ ] GitHub Actions CI
+- [ ] Rate limiting
+- [ ] URL expiration
+- [ ] Custom aliases
+- [ ] API documentation
 
 License
 MIT

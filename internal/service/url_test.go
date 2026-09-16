@@ -126,3 +126,109 @@ func TestCreateURLRejectsInvalidURL(t *testing.T) {
 		t.Fatalf("expected Save not to be called, got %d calls", repo.saveCalls)
 	}
 }
+
+func TestCreateURLWithAlias(t *testing.T) {
+	repo := &mockURLRepository{}
+	svc := NewURLService(repo)
+
+	code, err := svc.CreateURLWithAlias("http://example.com", "google")
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if code != "google" {
+		t.Fatalf("expected code google, got %s", code)
+	}
+
+	if repo.saveCalls != 1 {
+		t.Fatalf("expected 1 save call got %d", repo.saveCalls)
+	}
+}
+
+func TestValidateAlias(t *testing.T) {
+	tests := []struct {
+		name    string
+		alias   string
+		wantErr bool
+	}{
+		{
+			name:    "valid alias",
+			alias:   "google",
+			wantErr: false,
+		},
+		{
+			name:    "minimum length",
+			alias:   "abc",
+			wantErr: false,
+		},
+		{
+			name:    "too short",
+			alias:   "ab",
+			wantErr: true,
+		},
+		{
+			name:    "too long",
+			alias:   "abcdefghijklmnopq",
+			wantErr: true,
+		},
+		{
+			name:    "contains slash",
+			alias:   "foo/bar",
+			wantErr: true,
+		},
+		{
+			name:    "contains space",
+			alias:   "foo bar",
+			wantErr: true,
+		},
+		{
+			name:    "contains question mark",
+			alias:   "foo?bar",
+			wantErr: true,
+		},
+		{
+			name:    "contains hash",
+			alias:   "foo#bar",
+			wantErr: true,
+		},
+		{
+			name:    "empty",
+			alias:   "",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateAlias(tt.alias)
+
+			if (err != nil) != tt.wantErr {
+				t.Fatalf(
+					"ValidateAlias(%q) error = %v, wantErr %v",
+					tt.alias,
+					err,
+					tt.wantErr,
+				)
+			}
+		})
+	}
+}
+
+func TestValidateAliasRejectsReservedAliases(t *testing.T) {
+	reservedAliases := []string{
+		"health",
+		"hello",
+		"api",
+	}
+
+	for _, alias := range reservedAliases {
+		t.Run(alias, func(t *testing.T) {
+			err := ValidateAlias(alias)
+
+			if !errors.Is(err, ErrReservedAlias) {
+				t.Fatalf("expected ErrReservedAlias, got %v", err)
+			}
+		})
+	}
+}

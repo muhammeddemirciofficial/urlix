@@ -5,10 +5,12 @@ import (
 	"errors"
 	"math/big"
 	"net/url"
+	"strings"
 )
 
 var ErrDuplicateCode = errors.New("duplicate URL code")
 var ErrInvalidURL = errors.New("invalid URL")
+var ErrReservedAlias = errors.New("reserved alias")
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
@@ -81,6 +83,26 @@ func (s *URLService) IncrementClickCount(code string) error {
 	return s.repository.IncrementClickCount(code)
 }
 
+func (s *URLService) CreateURLWithAlias(rawURL string, alias string) (string, error) {
+	if err := ValidateURL(rawURL); err != nil {
+		return "", ErrInvalidURL
+	}
+
+	if err := ValidateAlias(alias); err != nil {
+		return "", err
+	}
+
+	if err := s.repository.Save(alias, rawURL); err != nil {
+		if errors.Is(err, ErrDuplicateCode) {
+			return "", ErrDuplicateCode
+		}
+
+		return "", err
+	}
+
+	return alias, nil
+}
+
 func GenerateCode(length int) (string, error) {
 	code := make([]byte, length)
 
@@ -111,6 +133,37 @@ func ValidateURL(rawURL string) error {
 
 	if parsed.Host == "" {
 		return errors.New("url host is required")
+	}
+
+	return nil
+}
+
+func ValidateAlias(alias string) error {
+	if alias == "" {
+		return errors.New("alias is required")
+	}
+
+	if len(alias) < 3 {
+		return errors.New("alias must be at least 3 characters long")
+	}
+
+	if len(alias) > 16 {
+		return errors.New("alias must be no more than 16 characters long")
+	}
+
+	if strings.ContainsAny(alias, " /?#%") {
+		return errors.New("alias contains invalid characters")
+	}
+
+	var reservedAliases = map[string]struct{}{
+		"health": {},
+		"hello":  {},
+		"api":    {},
+		"r":      {},
+	}
+
+	if _, exists := reservedAliases[alias]; exists {
+		return ErrReservedAlias
 	}
 
 	return nil

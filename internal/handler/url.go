@@ -20,7 +20,8 @@ func NewURLHandler(urlService *service.URLService) *URLHandler {
 }
 
 type CreateURLRequest struct {
-	URL string `json:"url"`
+	URL   string `json:"url"`
+	Alias string `json:"alias"`
 }
 
 type CreateURLResponse struct {
@@ -42,10 +43,22 @@ func (h *URLHandler) CreateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code, err := h.urlService.CreateURL(req.URL)
+	var code string
+
+	if req.Alias != "" {
+		code, err = h.urlService.CreateURLWithAlias(req.URL, req.Alias)
+	} else {
+		code, err = h.urlService.CreateURL(req.URL)
+	}
+
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidURL) {
 			http.Error(w, "invalid URL", http.StatusBadRequest)
+			return
+		}
+
+		if errors.Is(err, service.ErrDuplicateCode) {
+			http.Error(w, "alias already exists", http.StatusConflict)
 			return
 		}
 

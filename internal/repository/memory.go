@@ -19,6 +19,10 @@ func NewMemoryURLRepository() *MemoryURLRepository {
 }
 
 func (s *MemoryURLRepository) Save(code, url string) error {
+	if _, exists := s.urls[code]; exists {
+		return service.ErrDuplicateCode
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

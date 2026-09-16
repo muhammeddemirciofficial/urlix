@@ -4,10 +4,12 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/muhammeddemirciofficial/urlix/internal/handler"
+	"github.com/muhammeddemirciofficial/urlix/internal/middleware"
 	"github.com/muhammeddemirciofficial/urlix/internal/repository"
 	"github.com/muhammeddemirciofficial/urlix/internal/service"
 )
@@ -27,13 +29,15 @@ func main() {
 		panic(err)
 	}
 
+	rateLimiter := middleware.NewRaterLimiter(60, time.Minute)
+
 	urlRepository := repository.NewPostgresURLRepository(db)
 	urlService := service.NewURLService(urlRepository)
 	urlHandler := handler.NewURLHandler(urlService)
 
 	http.HandleFunc("/health", handler.Health)
 	http.HandleFunc("/hello", handler.Hello)
-	http.HandleFunc("POST /api/urls", urlHandler.CreateURL)
+	http.Handle("POST /api/urls", rateLimiter.Middleware(http.HandlerFunc(urlHandler.CreateURL)))
 	http.HandleFunc("GET /r/{code}", urlHandler.Redirect)
 	http.HandleFunc("GET /api/urls/{code}", urlHandler.GetStats)
 

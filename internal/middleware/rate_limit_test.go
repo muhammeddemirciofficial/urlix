@@ -8,7 +8,7 @@ import (
 )
 
 func TestRateLimiter(t *testing.T) {
-	limiter := NewRaterLimiter(3, time.Minute)
+	limiter := NewRateLimiter(3, time.Minute)
 
 	handler := limiter.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

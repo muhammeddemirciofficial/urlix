@@ -29,7 +29,7 @@ func main() {
 		panic(err)
 	}
 
-	rateLimiter := middleware.NewRaterLimiter(60, time.Minute)
+	rateLimiter := middleware.NewRateLimiter(60, time.Minute)
 
 	urlRepository := repository.NewPostgresURLRepository(db)
 	urlService := service.NewURLService(urlRepository)

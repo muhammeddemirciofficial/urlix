@@ -19,7 +19,7 @@ type RateLimiter struct {
 	window   time.Duration
 }
 
-func NewRaterLimiter(limit int, window time.Duration) *RateLimiter {
+func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
 	return &RateLimiter{
 		visitors: make(map[string]*visitor),
 		limit:    limit,

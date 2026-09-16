@@ -2,19 +2,26 @@
 
 A lightweight URL shortener built with Go and PostgreSQL.
 
-urlix provides a simple REST API for creating short URLs, redirecting users, and tracking click counts.
+urlix provides a simple REST API for creating short URLs, custom aliases, redirects, click tracking, URL statistics, rate limiting, and optional URL expiration.
 
 ## Features
 
 - Create short URLs
-- Random 6-character short codes
+- Cryptographically secure random 6-character codes
+- Custom URL aliases
+- Duplicate code collision retry
+- URL validation
+- Optional URL expiration
+- Expired URLs return `410 Gone`
+- Click tracking
+- URL statistics
 - PostgreSQL persistence
 - In-memory repository for testing
-- Click tracking
-- URL statistics endpoint
-- Input validation
+- IP-based rate limiting
 - Dockerized PostgreSQL
-- Unit tests
+- Unit and integration tests
+- Race detector tests
+- GitHub Actions CI
 - Clean separation between HTTP, service, and repository layers
 
 ## Architecture
@@ -29,12 +36,12 @@ Handler (HTTP)
 Service (Business Logic)
   |
   v
-Repository
+Repository Interface
   |
-  +------------+------------+
-  |                         |
-  v                         v
-PostgreSQL                Memory
+  +-------------------+
+  |                   |
+  v                   v
+PostgreSQL          Memory
 ```
 
 The project follows a simple dependency flow:
@@ -49,7 +56,7 @@ The service layer depends on the `URLRepository` interface rather than a concret
 
 ### Create a Short URL
 
-**POST** `/api/urls`
+`POST /api/urls`
 
 Request:
 
@@ -68,14 +75,83 @@ Response:
 }
 ```
 
+Returns `201 Created`.
+
+### Create a Custom Alias
+
+```http
+POST /api/urls
+```
+
+Request:
+
+```json
+{
+  "url": "https://github.com",
+  "alias": "github"
+}
+```
+
+Response:
+
+```json
+{
+  "code": "github",
+  "url": "https://github.com"
+}
+```
+
+Aliases must be between 3 and 16 characters and cannot contain URL/path separator characters.
+
+A duplicate alias returns:
+
+```text
+409 Conflict
+```
+
+### Create an Expiring URL
+
+```http
+POST /api/urls
+```
+
+Request:
+
+```json
+{
+  "url": "https://github.com",
+  "expires_at": "2026-12-31T23:59:59Z"
+}
+```
+
+The URL remains active until the specified expiration time.
+
+Expired URLs return:
+
+```text
+410 Gone
+```
+
+Aliases can also be combined with expiration:
+
+```json
+{
+  "url": "https://github.com",
+  "alias": "github",
+  "expires_at": "2026-12-31T23:59:59Z"
+}
+```
+
 ### Redirect
 
-**GET** `/r/{code}`
+```http
+GET /r/{code}
+```
 
 Example:
 
-```text
-GET /r/hGwSNp
+```bash
+curl -i http://localhost:8080/r/hGwSNp
 ```
 
 Returns an HTTP `302 Found` response and redirects the client to the original URL.
@@ -84,7 +160,9 @@ Each successful redirect increments the URL's click count.
 
 ### URL Statistics
 
-**GET** `/api/urls/{code}`
+```http
+GET /api/urls/{code}
+```
 
 Response:
 
@@ -98,11 +176,15 @@ Response:
 
 ### Health Check
 
-**GET** `/health`
+```http
+GET /health
+```
 
 ### Hello
 
-**GET** `/hello`
+```http
+GET /hello
+```
 
 ## Project Structure
 
@@ -116,14 +198,20 @@ urlix/
 │   │   ├── health.go
 │   │   ├── hello.go
 │   │   └── url.go
+│   ├── middleware/
+│   │   ├── rate_limit.go
+│   │   └── rate_limit_test.go
 │   ├── repository/
 │   │   ├── memory.go
-│   │   └── postgres.go
+│   │   ├── postgres.go
+│   │   └── postgres_test.go
 │   └── service/
-│       └── url.go
+│       ├── url.go
+│       └── url_test.go
 ├── migrations/
 │   ├── 001_create_urls.sql
-│   └── 002_add_click_count.sql
+│   ├── 002_add_click_count.sql
+│   └── 003_add_expires_at.sql
 ├── .github/
 │   └── workflows/
 │       └── ci.yml
@@ -139,6 +227,7 @@ urlix/
 - Go 1.27+
 - Docker
 - Docker Compose
+- PostgreSQL
 
 ## Run Locally
 
@@ -168,6 +257,12 @@ Run all tests:
 go test ./...
 ```
 
+Run the race detector:
+
+```bash
+go test -race ./...
+```
+
 Build the application:
 
 ```bash
@@ -182,6 +277,22 @@ Create a short URL:
 curl -X POST http://localhost:8080/api/urls \
   -H "Content-Type: application/json" \
   -d '{"url":"https://github.com"}'
+```
+
+Create a custom alias:
+
+```bash
+curl -X POST http://localhost:8080/api/urls \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://github.com","alias":"github"}'
+```
+
+Create an expiring URL:
+
+```bash
+curl -X POST http://localhost:8080/api/urls \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://github.com","expires_at":"2026-12-31T23:59:59Z"}'
 ```
 
 Redirect using the generated code:
@@ -201,9 +312,11 @@ curl http://localhost:8080/api/urls/{code}
 - Go
 - PostgreSQL
 - pgx
+- `database/sql`
 - Docker
-- database/sql
-- Go standard library (`net/http`)
+- `net/http`
+- Go standard library
+- GitHub Actions
 
 ## Roadmap
 
@@ -214,12 +327,18 @@ curl http://localhost:8080/api/urls/{code}
 - [x] URL statistics
 - [x] In-memory repository
 - [x] Unit tests
+- [x] Integration tests
 - [x] GitHub Actions CI
-- [ ] Integration tests
-- [ ] Rate limiting
-- [ ] URL expiration
-- [ ] Custom aliases
+- [x] Race detector tests
+- [x] Rate limiting
+- [x] URL validation
+- [x] Custom aliases
+- [x] URL expiration
 - [ ] API documentation
+- [ ] OpenAPI specification
+- [ ] Detailed click analytics
+- [ ] Authentication
+- [ ] Admin API
 
 ## License
 

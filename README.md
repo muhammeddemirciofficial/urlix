@@ -101,26 +101,26 @@ API
 Project Structure
 
         urlix/
-    ├── cmd/
-    │   └── api/
-    │       └── main.go
-    ├── internal/
-    │   ├── handler/
-    │   │   ├── health.go
-    │   │   ├── hello.go
-    │   │   └── url.go
-    │   ├── repository/
-    │   │   ├── memory.go
-    │   │   └── postgres.go
-    │   └── service/
-    │       └── url.go
-    ├── migrations/
-    │   ├── 001_create_urls.sql
-    │   └── 002_add_click_count.sql
-    ├── compose.yaml
-    ├── go.mod
-    ├── go.sum
-    └── README.md
+        ├── cmd/
+        │   └── api/
+        │       └── main.go
+        ├── internal/
+        │   ├── handler/
+        │   │   ├── health.go
+        │   │   ├── hello.go
+        │   │   └── url.go
+        │   ├── repository/
+        │   │   ├── memory.go
+        │   │   └── postgres.go
+        │   └── service/
+        │       └── url.go
+        ├── migrations/
+        │   ├── 001_create_urls.sql
+        │   └── 002_add_click_count.sql
+        ├── compose.yaml
+        ├── go.mod
+        ├── go.sum
+        └── README.md
 
 ## Requirements
     - GO 1.27+

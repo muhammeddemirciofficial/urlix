@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: urlix-postgres
+    environment:
+      POSTGRES_USER: urlix
+      POSTGRES_PASSWORD: urlix
+      POSTGRES_DB: urlix
+    ports:
+      - "5432:5432"
+    volumes:
+      - urlix_postgres_data:/var/lib/postgresql
+
+volumes:
+  urlix_postgres_data:

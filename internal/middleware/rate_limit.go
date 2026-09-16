@@ -34,12 +34,17 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 			ip = r.RemoteAddr
 		}
 
+		now := time.Now()
+
 		rl.mu.Lock()
-		defer rl.mu.Unlock()
+
+		for ip, v := range rl.visitors {
+			if now.Sub(v.windowStart) >= rl.window {
+				delete(rl.visitors, ip)
+			}
+		}
 
 		v, exists := rl.visitors[ip]
-
-		now := time.Now()
 
 		if !exists || now.Sub(v.windowStart) >= rl.window {
 			rl.visitors[ip] = &visitor{
@@ -47,16 +52,23 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 				windowStart: now,
 			}
 
+			rl.mu.Unlock()
+
 			next.ServeHTTP(w, r)
 			return
 		}
 
 		if v.count >= rl.limit {
+			rl.mu.Unlock()
+
 			http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 			return
 		}
 
 		v.count++
+
+		rl.mu.Unlock()
+
 		next.ServeHTTP(w, r)
 	})
 }

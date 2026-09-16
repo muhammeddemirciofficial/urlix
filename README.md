@@ -1,25 +1,24 @@
-# urlix
+urlix
 
 A lightweight URL shortener built with Go and PostgreSQL.
 
 urlix provides a simple REST API for creating short URLs, redirecting users, and tracking click counts.
 
-## Features
+Features
 
-- Create short URLs
-- Random 6-character short codes
-- PostgreSQL persistence
-- In-memory repository for testing
-- Click tracking
-- URL statistics endpoint
-- Input validation
-- Dockerized PostgreSQL
-- Unit tests
-- Clean separation between HTTP, service, and repository layers
+* Create short URLs
+* Random 6-character short codes
+* PostgreSQL persistence
+* In-memory repository for testing
+* Click tracking
+* URL statistics endpoint
+* Input validation
+* Dockerized PostgreSQL
+* Unit tests
+* Clean separation between HTTP, service, and repository layers
 
-## Architecture
+Architecture
 
-```text
 Client
   |
   v
@@ -31,98 +30,70 @@ Service (Business Logic)
   v
 Repository
   |
-  +----------+----------+
-  |                     |
-  v                     v
-PostgreSQL            Memory
-```
+  +------------+------------+
+  |                         |
+  v                         v
+PostgreSQL                Memory
 
 The project follows a simple dependency flow:
 
-```text
 HTTP -> Handler -> Service -> Repository
-```
 
-The service layer depends on the `URLRepository` interface rather than a concrete database implementation.
+The service layer depends on the URLRepository interface rather than a concrete database implementation.
 
-## API
+API
 
-### Create a Short URL
+Create a Short URL
 
-```http
 POST /api/urls
-Content-Type: application/json
-```
 
 Request:
 
-```json
 {
   "url": "https://github.com"
 }
-```
 
 Response:
 
-```json
 {
   "code": "hGwSNp",
   "url": "https://github.com"
 }
-```
 
-### Redirect
+Redirect
 
-```http
 GET /r/{code}
-```
 
 Example:
 
-```text
 GET /r/hGwSNp
-```
 
-Returns:
+Returns an HTTP 302 Found response and redirects the client to the original URL.
 
-```text
-302 Found
-Location: https://github.com
-```
+Each successful redirect increments the URL’s click count.
 
-Each successful redirect increments the URL's click count.
+URL Statistics
 
-### URL Statistics
-
-```http
 GET /api/urls/{code}
-```
 
 Response:
 
-```json
 {
   "code": "hGwSNp",
   "url": "https://github.com",
   "click_count": 3
 }
-```
 
-### Health Check
+Health Check
 
-```http
 GET /health
-```
 
-### Hello
+Hello
 
-```http
 GET /hello
-```
 
-## Project Structure
+Project Structure
 
-```text
 urlix/
 ├── cmd/
 │   └── api/
@@ -140,100 +111,86 @@ urlix/
 ├── migrations/
 │   ├── 001_create_urls.sql
 │   └── 002_add_click_count.sql
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── compose.yaml
 ├── go.mod
 ├── go.sum
 ├── LICENSE
 └── README.md
-```
 
-## Requirements
+Requirements
 
-- Go 1.27+
-- Docker
-- Docker Compose
+* Go 1.27+
+* Docker
+* Docker Compose
 
-## Run Locally
+Run Locally
 
 Start PostgreSQL:
 
-```bash
 docker compose up -d
-```
 
 Run the application:
 
-```bash
 go run ./cmd/api
-```
 
 The API will be available at:
 
-```text
 http://localhost:8080
-```
 
-## Test
+Test
 
 Run all tests:
 
-```bash
 go test ./...
-```
 
 Build the application:
 
-```bash
 go build ./...
-```
 
-## Example
+Example
 
 Create a short URL:
 
-```bash
 curl -X POST http://localhost:8080/api/urls \
   -H "Content-Type: application/json" \
   -d '{"url":"https://github.com"}'
-```
 
-Then open the generated short URL:
+Redirect using the generated code:
 
-```bash
 curl -i http://localhost:8080/r/{code}
-```
 
 Check URL statistics:
 
-```bash
 curl http://localhost:8080/api/urls/{code}
-```
 
-## Tech Stack
+Tech Stack
 
-- Go
-- PostgreSQL
-- pgx
-- Docker
-- database/sql
-- Go standard library (`net/http`)
+* Go
+* PostgreSQL
+* pgx
+* Docker
+* database/sql
+* Go standard library (net/http)
 
-## Roadmap
+Roadmap
 
-- [x] URL creation
-- [x] URL redirection
-- [x] PostgreSQL persistence
-- [x] Click tracking
-- [x] URL statistics
-- [x] In-memory repository
-- [x] Unit tests
-- [ ] Integration tests
-- [ ] GitHub Actions CI
-- [ ] Rate limiting
-- [ ] URL expiration
-- [ ] Custom aliases
-- [ ] API documentation
+* URL creation
+* URL redirection
+* PostgreSQL persistence
+* Click tracking
+* URL statistics
+* In-memory repository
+* Unit tests
+* GitHub Actions CI
+* Integration tests
+* Rate limiting
+* URL expiration
+* Custom aliases
+* API documentation
 
-## License
+License
 
 MIT

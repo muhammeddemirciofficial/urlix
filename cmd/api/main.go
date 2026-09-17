@@ -44,6 +44,8 @@ func main() {
 	mux.HandleFunc("/health", handler.Health)
 	mux.Handle("GET /health/db", handler.DatabaseHealth(db))
 	mux.HandleFunc("/hello", handler.Hello)
+	mux.HandleFunc("GET /openapi.yaml", handler.OpenAPI)
+	mux.HandleFunc("GET /docs", handler.Docs)
 	mux.Handle("POST /api/urls", rateLimiter.Middleware(http.HandlerFunc(urlHandler.CreateURL)))
 	mux.HandleFunc("GET /r/{code}", urlHandler.Redirect)
 	mux.HandleFunc("GET /api/urls/{code}", urlHandler.GetStats)

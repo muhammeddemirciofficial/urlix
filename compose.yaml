@@ -18,7 +18,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["/app/migrate"]
+    entrypoint: ["/app/migrate"]
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
     depends_on:

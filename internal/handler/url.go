@@ -9,6 +9,8 @@ import (
 	"github.com/muhammeddemirciofficial/urlix/internal/service"
 )
 
+const maxCreateURLBodySize = 8 << 10
+
 type URLHandler struct {
 	urlService *service.URLService
 }
@@ -30,10 +32,22 @@ type CreateURLResponse struct {
 }
 
 func (h *URLHandler) CreateURL(w http.ResponseWriter, r *http.Request) {
-	var req CreateURLRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+		return
+	}
 
-	if err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, maxCreateURLBodySize)
+	defer r.Body.Close()
+
+	var req CreateURLRequest
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&req); err != nil {
+		http.Error(w, "invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	if decoder.More() {
 		http.Error(w, "invalid request payload", http.StatusBadRequest)
 		return
 	}
@@ -44,6 +58,7 @@ func (h *URLHandler) CreateURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var code string
+	var err error
 
 	if req.Alias != "" {
 		code, err = h.urlService.CreateURLWithAlias(req.URL, req.Alias)
@@ -73,7 +88,9 @@ func (h *URLHandler) CreateURL(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		return
+	}
 }
 
 func (h *URLHandler) Redirect(w http.ResponseWriter, r *http.Request) {
@@ -101,7 +118,7 @@ func (h *URLHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.urlService.RecordClick(result.ID, r.UserAgent(), r.Referer()); err != nil {
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
 	}
 
 	http.Redirect(w, r, result.URL, http.StatusFound)
@@ -142,7 +159,6 @@ func (h *URLHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(analytics); err != nil {
-		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 }

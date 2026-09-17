@@ -1,0 +1,188 @@
+openapi: 3.0.3
+info:
+  title: URLIX API
+  description: Production-ready URL shortener API.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      summary: Application health
+      responses:
+        '200':
+          description: Application is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /health/db:
+    get:
+      summary: Database health
+      responses:
+        '200':
+          description: Database is reachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Database is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /api/urls:
+    post:
+      summary: Create a short URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateURLRequest'
+      responses:
+        '201':
+          description: Short URL created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateURLResponse'
+        '400':
+          description: Invalid request
+        '409':
+          description: Alias already exists
+        '500':
+          description: Internal server error
+  /r/{code}:
+    get:
+      summary: Redirect to the original URL
+      parameters:
+        - $ref: '#/components/parameters/Code'
+      responses:
+        '302':
+          description: Redirect
+        '404':
+          description: URL not found
+        '410':
+          description: URL expired
+        '500':
+          description: Internal server error
+  /api/urls/{code}:
+    get:
+      summary: Get URL statistics
+      parameters:
+        - $ref: '#/components/parameters/Code'
+      responses:
+        '200':
+          description: URL statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/URLStats'
+        '404':
+          description: URL not found
+        '500':
+          description: Internal server error
+  /api/urls/{code}/analytics:
+    get:
+      summary: Get URL click analytics
+      parameters:
+        - $ref: '#/components/parameters/Code'
+      responses:
+        '200':
+          description: URL analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/URLAnalytics'
+        '404':
+          description: URL not found
+        '500':
+          description: Internal server error
+components:
+  parameters:
+    Code:
+      name: code
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 16
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+    CreateURLRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          example: https://example.com/very/long/url
+        alias:
+          type: string
+          maxLength: 16
+          example: example
+    CreateURLResponse:
+      type: object
+      required: [code, url]
+      properties:
+        code:
+          type: string
+          example: aB3xY9
+        url:
+          type: string
+          format: uri
+          example: https://example.com/very/long/url
+    URLStats:
+      type: object
+      required: [code, url, click_count]
+      properties:
+        code:
+          type: string
+          example: aB3xY9
+        url:
+          type: string
+          format: uri
+          example: https://example.com/very/long/url
+        click_count:
+          type: integer
+          format: int64
+          example: 42
+    URLAnalytics:
+      type: object
+      required: [code, url, click_count, clicks]
+      properties:
+        code:
+          type: string
+          example: aB3xY9
+        url:
+          type: string
+          format: uri
+          example: https://example.com/very/long/url
+        click_count:
+          type: integer
+          format: int64
+          example: 42
+        clicks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Click'
+    Click:
+      type: object
+      required: [clicked_at, user_agent, referer]
+      properties:
+        clicked_at:
+          type: string
+          format: date-time
+        user_agent:
+          type: string
+        referer:
+          type: string

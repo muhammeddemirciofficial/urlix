@@ -42,6 +42,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handler.Health)
+	mux.Handle("GET /health/db", handler.DatabaseHealth(db))
 	mux.HandleFunc("/hello", handler.Hello)
 	mux.Handle("POST /api/urls", rateLimiter.Middleware(http.HandlerFunc(urlHandler.CreateURL)))
 	mux.HandleFunc("GET /r/{code}", urlHandler.Redirect)

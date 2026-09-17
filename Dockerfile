@@ -21,6 +21,7 @@ WORKDIR /app
 COPY --from=builder /urlix /app/urlix
 COPY --from=builder /migrate /app/migrate
 COPY migrations /app/migrations
+COPY openapi.yaml /app/openapi.yaml
 
 USER urlix
 

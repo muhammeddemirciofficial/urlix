@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -37,16 +40,42 @@ func main() {
 	urlService := service.NewURLService(urlRepository)
 	urlHandler := handler.NewURLHandler(urlService)
 
-	http.HandleFunc("/health", handler.Health)
-	http.HandleFunc("/hello", handler.Hello)
-	http.Handle("POST /api/urls", rateLimiter.Middleware(http.HandlerFunc(urlHandler.CreateURL)))
-	http.HandleFunc("GET /r/{code}", urlHandler.Redirect)
-	http.HandleFunc("GET /api/urls/{code}", urlHandler.GetStats)
-	http.HandleFunc("GET /api/urls/{code}/analytics", urlHandler.GetAnalytics)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", handler.Health)
+	mux.HandleFunc("/hello", handler.Hello)
+	mux.Handle("POST /api/urls", rateLimiter.Middleware(http.HandlerFunc(urlHandler.CreateURL)))
+	mux.HandleFunc("GET /r/{code}", urlHandler.Redirect)
+	mux.HandleFunc("GET /api/urls/{code}", urlHandler.GetStats)
+	mux.HandleFunc("GET /api/urls/{code}/analytics", urlHandler.GetAnalytics)
 
-	fmt.Println("URLIX is running on http://localhost:8080")
-
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		panic(err)
+	server := &http.Server{
+		Addr:              ":8080",
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
+
+	go func() {
+		fmt.Println("URLIX is running on http://localhost:8080")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			panic(err)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	<-stop
+
+	fmt.Println("shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		panic(fmt.Errorf("server shutdown: %w", err))
+	}
+
+	fmt.Println("server stopped")
 }

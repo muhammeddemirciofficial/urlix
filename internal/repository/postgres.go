@@ -47,11 +47,12 @@ func (r *PostgresURLRepository) Get(code string) (service.URL, error) {
 
 	err := r.db.QueryRowContext(
 		context.Background(),
-		`SELECT code, url, expires_at
+		`SELECT id, code, url, expires_at
 		 FROM urls
 		 WHERE code = $1`,
 		code,
 	).Scan(
+		&result.ID,
 		&result.Code,
 		&result.URL,
 		&result.ExpiresAt,

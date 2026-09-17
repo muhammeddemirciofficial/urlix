@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"io"
+	"mime"
 	"net/http"
 
 	"github.com/muhammeddemirciofficial/urlix/internal/service"
@@ -32,7 +34,8 @@ type CreateURLResponse struct {
 }
 
 func (h *URLHandler) CreateURL(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Content-Type") != "application/json" {
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil || mediaType != "application/json" {
 		http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
 		return
 	}
@@ -47,7 +50,8 @@ func (h *URLHandler) CreateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if decoder.More() {
+	var extra any
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
 		http.Error(w, "invalid request payload", http.StatusBadRequest)
 		return
 	}
@@ -58,8 +62,6 @@ func (h *URLHandler) CreateURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var code string
-	var err error
-
 	if req.Alias != "" {
 		code, err = h.urlService.CreateURLWithAlias(req.URL, req.Alias)
 	} else {

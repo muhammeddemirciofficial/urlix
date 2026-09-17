@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -15,14 +16,15 @@ import (
 )
 
 func main() {
-	db, err := sql.Open(
-		"pgx",
-		"postgres://urlix:urlix@localhost:5432/urlix?sslmode=disable")
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		panic("DATABASE_URL environment variable is required")
+	}
 
+	db, err := sql.Open("pgx", dbURL)
 	if err != nil {
 		panic(err)
 	}
-
 	defer db.Close()
 
 	if err := db.Ping(); err != nil {
@@ -44,8 +46,7 @@ func main() {
 
 	fmt.Println("URLIX is running on http://localhost:8080")
 
-	err = http.ListenAndServe(":8080", nil)
-	if err != nil {
+	if err := http.ListenAndServe(":8080", nil); err != nil {
 		panic(err)
 	}
 }

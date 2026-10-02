@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Atık Toplama Oyunu</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        input {
+            user-select: text;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #dff3e3;
+            overflow: hidden;
+        }
+
+        #game {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: linear-gradient(
+                to bottom,
+                #87ceeb 0%,
+                #dff6ff 65%,
+                #a8d08d 65%,
+                #76b852 100%
+            );
+        }
+
+        /* Üst bilgi */
+
+        #topBar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 70px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.65);
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+            z-index: 100;
+        }
+
+        /* Oyun alanı */
+
+        #gameArea {
+            position: absolute;
+            top: 70px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        /* Atık */
+
+        .waste {
+            position: absolute;
+            width: 65px;
+            height: 65px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 42px;
+            cursor: grab;
+            touch-action: none;
+            z-index: 40;
+        }
+
+        .waste:active {
+            cursor: grabbing;
+        }
+
+        /* Kutular */
+
+        #bins {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            width: 100%;
+            height: 180px;
+            display: flex;
+            justify-content: space-evenly;
+            align-items: flex-end;
+            z-index: 30;
+        }
+
+        .bin {
+            width: 150px;
+            height: 145px;
+            border-radius: 15px 15px 10px 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            border: 5px solid rgba(0, 0, 0, 0.25);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.25);
+            transition: transform 0.15s;
+        }
+
+        .bin:hover {
+            transform: scale(1.05);
+        }
+
+        .bin-icon {
+            font-size: 45px;
+        }
+
+        .bin-name {
+            font-size: 18px;
+            margin-top: 5px;
+        }
+
+        .plastic { background: #3498db; }
+        .paper   { background: #f1c40f; }
+        .glass   { background: #2ecc71; }
+        .organic { background: #8e5a2a; }
+
+        /* Tam ekran katmanları (başlangıç, lobi, sonuç) */
+
+        #startScreen,
+        #lobbyScreen,
+        #gameOverScreen {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            color: white;
+            z-index: 200;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        /* İçerik kısaysa ortala, uzunsa üstten kesilmesin */
+        #startScreen > :first-child,
+        #lobbyScreen > :first-child,
+        #gameOverScreen > :first-child { margin-top: auto; }
+
+        #startScreen > :last-child,
+        #lobbyScreen > :last-child,
+        #gameOverScreen > :last-child { margin-bottom: auto; }
+
+        #lobbyScreen,
+        #gameOverScreen {
+            display: none;
+        }
+
+        h1 {
+            font-size: 45px;
+            margin-bottom: 10px;
+        }
+
+        .description {
+            max-width: 600px;
+            text-align: center;
+            line-height: 1.6;
+            font-size: 18px;
+        }
+
+        .waste-guide {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 15px 0;
+        }
+
+        .waste-guide div {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .waste-guide span {
+            font-size: 36px;
+        }
+
+        #playerName {
+            margin-top: 20px;
+            padding: 12px 18px;
+            width: 260px;
+            max-width: 80vw;
+            font-size: 20px;
+            text-align: center;
+            border: none;
+            border-radius: 10px;
+        }
+
+        button {
+            margin-top: 25px;
+            padding: 15px 35px;
+            border: none;
+            border-radius: 10px;
+            background: #27ae60;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #219150;
+        }
+
+        /* Lobi */
+
+        #lobbyList {
+            list-style: none;
+            padding: 0;
+            width: 280px;
+            max-width: 90vw;
+        }
+
+        #lobbyList li {
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+        }
+
+        /* Geri sayım */
+
+        #countdown {
+            position: absolute;
+            inset: 0;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-size: 120px;
+            font-weight: bold;
+            color: white;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 150;
+        }
+
+        /* Canlı sıralama */
+
+        #liveBoard {
+            position: absolute;
+            top: 80px;
+            right: 10px;
+            display: none;
+            min-width: 150px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.55);
+            color: white;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 90;
+        }
+
+        /* Sonuç ekranı */
+
+        #finalScore {
+            font-size: 30px;
+            color: #f1c40f;
+        }
+
+        .resultBox p {
+            margin: 6px 0;
+            font-size: 18px;
+        }
+
+        .environmentResult {
+            margin-top: 15px;
+            text-align: center;
+            max-width: 500px;
+        }
+
+        #carbonReduction {
+            font-size: 48px;
+            font-weight: bold;
+            color: #2ecc71;
+        }
+
+        .awarenessMessage {
+            margin-top: 15px;
+            font-style: italic;
+        }
+
+        .leaderboard {
+            margin-top: 15px;
+            width: 320px;
+            max-width: 90vw;
+        }
+
+        .leaderboard h2 {
+            text-align: center;
+            margin: 0 0 8px;
+        }
+
+        .leaderboard ol {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+
+        .leaderboard li {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 12px;
+            margin-bottom: 4px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+        }
+
+        .leaderboard li.current {
+            background: #f1c40f;
+            color: #222;
+            font-weight: bold;
+        }
+
+        .gameOverButtons {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        /* Mobil */
+
+        @media (max-width: 700px) {
+
+            #topBar {
+                height: 55px;
+                font-size: 16px;
+            }
+
+            #gameArea {
+                top: 55px;
+                bottom: 0;
+            }
+
+            #liveBoard {
+                top: 65px;
+                font-size: 12px;
+                min-width: 120px;
+            }
+
+            #bins {
+                height: 140px;
+            }
+
+            .bin {
+                width: 22vw;
+                height: 105px;
+                border-width: 3px;
+            }
+
+            .bin-icon {
+                font-size: 30px;
+            }
+
+            .bin-name {
+                font-size: 12px;
+            }
+
+            .waste {
+                width: 55px;
+                height: 55px;
+                font-size: 35px;
+            }
+
+            h1 {
+                font-size: 32px;
+            }
+
+            #countdown {
+                font-size: 90px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="game">
+
+    <!-- Üst bilgi -->
+    <div id="topBar">
+        <div>🏆 Skor: <span id="score">0</span></div>
+        <div>⏱️ Süre: <span id="time">60</span></div>
+        <div>♻️ Doğru: <span id="correct">0</span></div>
+    </div>
+
+    <!-- Oyun alanı -->
+    <div id="gameArea"></div>
+
+    <!-- Kutular -->
+    <div id="bins">
+        <div class="bin plastic" data-type="plastic">
+            <div class="bin-icon">🥤</div>
+            <div class="bin-name">PLASTİK</div>
+        </div>
+
+        <div class="bin paper" data-type="paper">
+            <div class="bin-icon">📄</div>
+            <div class="bin-name">KAĞIT</div>
+        </div>
+
+        <div class="bin glass" data-type="glass">
+            <div class="bin-icon">🍾</div>
+            <div class="bin-name">CAM</div>
+        </div>
+
+        <div class="bin organic" data-type="organic">
+            <div class="bin-icon">🍎</div>
+            <div class="bin-name">ORGANİK</div>
+        </div>
+    </div>
+
+    <!-- Başlangıç / isim girişi -->
+    <div id="startScreen">
+
+        <h1>♻️ Atık Toplama</h1>
+
+        <div class="description">
+
+            <h2>🌍 Nasıl Oynanır?</h2>
+
+            <p>
+                Yukarıdan düşen atıkları doğru geri dönüşüm
+                kutusuna <strong>tut, sürükle ve bırak.</strong>
+            </p>
+
+            <div class="waste-guide">
+                <div><span>🥤</span><strong>Plastik</strong></div>
+                <div><span>📄</span><strong>Kağıt</strong></div>
+                <div><span>🍾</span><strong>Cam</strong></div>
+                <div><span>🍎</span><strong>Organik</strong></div>
+            </div>
+
+            <p>
+                ♻️ Doğru ayrıştırılan her atık,
+                geri dönüşümün verimli yapılmasına ve
+                doğal kaynakların korunmasına katkı sağlar.
+            </p>
+
+            <p>
+                <strong>
+                    60 saniyede ne kadar çok atığı doğru
+                    ayrıştırabileceğini gör!
+                </strong>
+            </p>
+        </div>
+
+        <input
+            id="playerName"
+            type="text"
+            maxlength="15"
+            placeholder="Adını yaz..."
+            autocomplete="off"
+        >
+
+        <button id="startButton">🌱 Lobiye Katıl</button>
+
+    </div>
+
+    <!-- Lobi -->
+    <div id="lobbyScreen">
+        <h1>👥 Lobi</h1>
+        <ul id="lobbyList"></ul>
+        <p id="lobbyInfo"></p>
+        <button id="hostStartButton">▶️ Oyunu Başlat</button>
+    </div>
+
+    <!-- Oyun bitti -->
+    <div id="gameOverScreen">
+
+        <h1>🌍 Oyun Bitti!</h1>
+
+        <div id="finalScore">Skor: 0</div>
+
+        <div class="resultBox">
+            <p>♻️ Doğru ayrıştırma: <strong id="finalCorrect">0</strong></p>
+            <p>❌ Yanlış ayrıştırma: <strong id="finalWrong">0</strong></p>
+            <p>🗑️ Kaçan atık (doğaya karıştı): <strong id="finalMissed">0</strong></p>
+        </div>
+
+        <div class="environmentResult">
+            <h2>🌱 Doğaya Katkın</h2>
+            <p>Tahmini CO₂e azaltımı</p>
+
+            <div id="carbonReduction">%0</div>
+
+            <p>
+                Ayrıştırma yaparak tahmini
+                <strong id="carbonSaved">0</strong>
+                kg CO₂e emisyonunun önlenmesine
+                katkıda bulundun.
+            </p>
+        </div>
+
+        <p class="awarenessMessage">
+            Küçük bir ayrıştırma, büyük bir fark yaratabilir. 🌱
+        </p>
+
+        <div class="leaderboard">
+            <h2>🏆 Sıralama</h2>
+            <ol id="leaderboardList"></ol>
+        </div>
+
+        <div class="gameOverButtons">
+            <button id="restartButton">🔁 Lobiye Dön</button>
+            <button id="newPlayerButton">🚪 Çıkış</button>
+        </div>
+
+    </div>
+
+    <!-- Geri sayım ve canlı sıralama -->
+    <div id="countdown"></div>
+    <div id="liveBoard"></div>
+
+</div>
+
+<!-- SignalR istemcisi game.js'ten ÖNCE yüklenmeli -->
+<script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+<script src="game.js"></script>
+
+</body>
+</html>
